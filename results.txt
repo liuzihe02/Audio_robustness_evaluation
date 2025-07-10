@@ -2,14 +2,19 @@ Audio Deepfake Detection Evaluation Results
 ============================================================
 MP3 files directory: ../samples
 Model weights directory: ./models/weights
+Threshold type: fixed
+Fixed threshold: 0.5
+
 
 ============================================================
 MODEL: WAVE2VEC2BERT
 ============================================================
 Overall Metrics:
-  Accuracy: 0.7143
+  Accuracy: 0.7857
   AUROC: 0.7424
   EER: 0.3030
+  EER Threshold: 0.8655
+  Used Threshold: 0.5000 (fixed)
 
 Individual File Results:
 Filename	True_Label	Predicted	Prob_Genuine	Confidence	Correct
@@ -26,7 +31,7 @@ jt_cq.mp3	0	0	0.0032	0.9968	yes
 jt_oaii.mp3	0	0	0.0179	0.9821	yes
 lhl_oaip.mp3	0	0	0.0078	0.9922	yes
 gky_el.mp3	0	1	0.9816	0.9816	no
-lhl_original.mp3	1	0	0.8655	0.1345	no
+lhl_original.mp3	1	1	0.8655	0.8655	yes
 lhl_cq.mp3	0	0	0.0038	0.9962	yes
 jt_original.mp3	1	1	0.9782	0.9782	yes
 lw_oaii.mp3	0	0	0.0031	0.9969	yes
@@ -38,7 +43,7 @@ lhl_el.mp3	0	1	0.9952	0.9952	no
 jt_oaip.mp3	0	0	0.0106	0.9894	yes
 lhl_oaii.mp3	0	0	0.0032	0.9968	yes
 lw_el.mp3	0	1	0.9958	0.9958	no
-lw_original.mp3	1	0	0.7858	0.2142	no
+lw_original.mp3	1	1	0.7858	0.7858	yes
 jt_el.mp3	0	1	0.9860	0.9860	no
 lhl_ov.mp3	0	0	0.0032	0.9968	yes
 gky_oaii.mp3	0	0	0.0031	0.9969	yes
@@ -48,40 +53,42 @@ gky_oaii.mp3	0	0	0.0031	0.9969	yes
 MODEL: AASIST
 ============================================================
 Overall Metrics:
-  Accuracy: 0.5357
+  Accuracy: 0.3214
   AUROC: 0.5682
   EER: 0.4773
+  EER Threshold: 0.9998
+  Used Threshold: 0.5000 (fixed)
 
 Individual File Results:
 Filename	True_Label	Predicted	Prob_Genuine	Confidence	Correct
 --------------------------------------------------------------------------------
 voice_two_cloned.mp3	0	1	1.0000	1.0000	no
-lw_oaip.mp3	0	0	0.9993	0.0007	yes
-gky_ov.mp3	0	0	0.9472	0.0528	yes
-lw_ov.mp3	0	0	0.9761	0.0239	yes
+lw_oaip.mp3	0	1	0.9993	0.9993	no
+gky_ov.mp3	0	1	0.9472	0.9472	no
+lw_ov.mp3	0	1	0.9761	0.9761	no
 gky_cq.mp3	0	1	1.0000	1.0000	no
 jt_ov.mp3	0	1	0.9999	0.9999	no
 voice_one_original.mp3	1	1	1.0000	1.0000	yes
 lw_cq.mp3	0	1	1.0000	1.0000	no
 jt_cq.mp3	0	1	1.0000	1.0000	no
 jt_oaii.mp3	0	0	0.0208	0.9792	yes
-lhl_oaip.mp3	0	0	0.9994	0.0006	yes
+lhl_oaip.mp3	0	1	0.9994	0.9994	no
 gky_el.mp3	0	1	1.0000	1.0000	no
 lhl_original.mp3	1	1	1.0000	1.0000	yes
-lhl_cq.mp3	0	0	0.9997	0.0003	yes
-jt_original.mp3	1	0	0.9998	0.0002	no
+lhl_cq.mp3	0	1	0.9997	0.9997	no
+jt_original.mp3	1	1	0.9998	0.9998	yes
 lw_oaii.mp3	0	0	0.0001	0.9999	yes
 voice_two_original.mp3	1	1	1.0000	1.0000	yes
 voice_one_cloned.mp3	0	1	1.0000	1.0000	no
-gky_original.mp3	1	0	0.9994	0.0006	no
-gky_oaip.mp3	0	0	0.5958	0.4042	yes
+gky_original.mp3	1	1	0.9994	0.9994	yes
+gky_oaip.mp3	0	1	0.5958	0.5958	no
 lhl_el.mp3	0	1	1.0000	1.0000	no
-jt_oaip.mp3	0	0	0.9578	0.0422	yes
+jt_oaip.mp3	0	1	0.9578	0.9578	no
 lhl_oaii.mp3	0	0	0.4077	0.5923	yes
 lw_el.mp3	0	1	1.0000	1.0000	no
 lw_original.mp3	1	0	0.0072	0.9928	no
 jt_el.mp3	0	1	1.0000	1.0000	no
-lhl_ov.mp3	0	0	0.9762	0.0238	yes
+lhl_ov.mp3	0	1	0.9762	0.9762	no
 gky_oaii.mp3	0	0	0.0143	0.9857	yes
 
 
@@ -89,16 +96,18 @@ gky_oaii.mp3	0	0	0.0143	0.9857	yes
 MODEL: RAWNET2
 ============================================================
 Overall Metrics:
-  Accuracy: 0.5357
+  Accuracy: 0.7500
   AUROC: 0.6515
   EER: 0.4773
+  EER Threshold: 0.0008
+  Used Threshold: 0.5000 (fixed)
 
 Individual File Results:
 Filename	True_Label	Predicted	Prob_Genuine	Confidence	Correct
 --------------------------------------------------------------------------------
 voice_two_cloned.mp3	0	0	0.0000	1.0000	yes
 lw_oaip.mp3	0	0	0.0001	0.9999	yes
-gky_ov.mp3	0	1	0.0062	0.0062	no
+gky_ov.mp3	0	0	0.0062	0.9938	yes
 lw_ov.mp3	0	0	0.0003	0.9997	yes
 gky_cq.mp3	0	0	0.0000	1.0000	yes
 jt_ov.mp3	0	1	0.9423	0.9423	no
@@ -107,19 +116,19 @@ lw_cq.mp3	0	0	0.0000	1.0000	yes
 jt_cq.mp3	0	1	0.8723	0.8723	no
 jt_oaii.mp3	0	1	0.5163	0.5163	no
 lhl_oaip.mp3	0	0	0.0000	1.0000	yes
-gky_el.mp3	0	1	0.0054	0.0054	no
+gky_el.mp3	0	0	0.0054	0.9946	yes
 lhl_original.mp3	1	1	0.8329	0.8329	yes
 lhl_cq.mp3	0	0	0.0000	1.0000	yes
 jt_original.mp3	1	1	0.9707	0.9707	yes
-lw_oaii.mp3	0	1	0.2296	0.2296	no
+lw_oaii.mp3	0	0	0.2296	0.7704	yes
 voice_two_original.mp3	1	0	0.0004	0.9996	no
 voice_one_cloned.mp3	0	0	0.0000	1.0000	yes
 gky_original.mp3	1	1	0.5118	0.5118	yes
 gky_oaip.mp3	0	0	0.0000	1.0000	yes
 lhl_el.mp3	0	0	0.0001	0.9999	yes
-jt_oaip.mp3	0	1	0.0067	0.0067	no
-lhl_oaii.mp3	0	1	0.0037	0.0037	no
-lw_el.mp3	0	1	0.0022	0.0022	no
+jt_oaip.mp3	0	0	0.0067	0.9933	yes
+lhl_oaii.mp3	0	0	0.0037	0.9963	yes
+lw_el.mp3	0	0	0.0022	0.9978	yes
 lw_original.mp3	1	0	0.0000	1.0000	no
 jt_el.mp3	0	1	0.9345	0.9345	no
 lhl_ov.mp3	0	0	0.0000	1.0000	yes

@@ -131,8 +131,39 @@ def safe_collate_fn(batch):
     return waveforms_batch, labels_batch, file_paths
 
 
-def run_validation_fm_with_details(model, feature_extractor, data_loader, sr):
-    """Modified version that returns individual predictions"""
+def calculate_predictions(
+    outputs_list, labels_list, eer, threshold_type, fixed_threshold=0.5
+):
+    """Calculate predictions based on threshold type"""
+
+    if threshold_type == "eer":
+        threshold = eer[1]
+        threshold_name = f"EER ({threshold:.4f})"
+    elif threshold_type == "fixed":
+        threshold = fixed_threshold
+        threshold_name = f"Fixed ({threshold:.4f})"
+    else:
+        raise ValueError(
+            f"Invalid threshold_type: {threshold_type}. Use 'eer' or 'fixed'"
+        )
+
+    preds = (np.array(outputs_list) > threshold).astype(int)
+    acc = np.mean(np.array(labels_list) == preds)
+
+    print(f"Using {threshold_name} threshold: Accuracy = {acc:.4f}")
+
+    return preds, acc, threshold
+
+
+def run_validation_fm_with_details(
+    model,
+    feature_extractor,
+    data_loader,
+    sr,
+    threshold_type="fixed",
+    fixed_threshold=0.5,
+):
+    """Modified version that returns individual predictions with configurable threshold"""
     device = "cuda" if torch.cuda.is_available() else "cpu"
     outputs_list = []
     labels_list = []
@@ -166,36 +197,32 @@ def run_validation_fm_with_details(model, feature_extractor, data_loader, sr):
     auroc = roc_auc_score(labels_list, outputs_list)
     eer = compute_eer(np.array(labels_list), np.array(outputs_list))
 
-    # ===== ADD THESE DEBUG LINES =====
-    print(f"\n=== DEBUG FM EER ===")
-    print(f"EER: {eer[0]:.4f}, Threshold: {eer[1]:.4f}")
+    # Debug info
+    print(f"\n=== DEBUG FM ===")
+    print(f"EER: {eer[0]:.4f}, EER Threshold: {eer[1]:.4f}")
     print(f"Prob range: {min(outputs_list):.4f} to {max(outputs_list):.4f}")
 
-    preds = (np.array(outputs_list) > eer[1]).astype(int)
+    # Calculate predictions based on threshold type
+    preds, acc, used_threshold = calculate_predictions(
+        outputs_list, labels_list, eer, threshold_type, fixed_threshold
+    )
 
-    # Check for mismatches
-    mismatches = []
-    for i, (prob, pred) in enumerate(zip(outputs_list, preds)):
-        expected = 1 if prob > eer[1] else 0
-        if pred != expected:
-            filename = os.path.basename(file_paths_list[i])
-            mismatches.append((filename, prob, pred, expected))
-
-    if mismatches:
-        print(f"FOUND {len(mismatches)} PREDICTION MISMATCHES:")
-        for filename, prob, pred, expected in mismatches[:3]:
-            print(f"  {filename}: prob={prob:.4f}, pred={pred}, expected={expected}")
-    else:
-        print("No prediction mismatches found")
-    # ================================
-
-    acc = np.mean(np.array(labels_list) == np.array(preds))
-
-    return acc, auroc, eer, outputs_list, labels_list, file_paths_list, preds
+    return (
+        acc,
+        auroc,
+        eer,
+        outputs_list,
+        labels_list,
+        file_paths_list,
+        preds,
+        used_threshold,
+    )
 
 
-def run_validation_tm_with_details(config, data_loader, model, device):
-    """Modified version that returns individual predictions"""
+def run_validation_tm_with_details(
+    config, data_loader, model, device, threshold_type="fixed", fixed_threshold=0.5
+):
+    """Modified version that returns individual predictions with configurable threshold"""
     from audio_feature_extraction import LFCC
     from torchaudio.transforms import Spectrogram
 
@@ -236,27 +263,27 @@ def run_validation_tm_with_details(config, data_loader, model, device):
     auroc = roc_auc_score(labels_list, outputs_list)
     eer = compute_eer(np.array(labels_list), np.array(outputs_list))
 
-    # ===== ADD THESE DEBUG LINES =====
-    print(f"\n=== DEBUG TM EER ===")
+    # Debug info
+    print(f"\n=== DEBUG TM ===")
     print(f"Model: {config['model_config']['architecture']}")
-    print(f"EER: {eer[0]:.4f}, Threshold: {eer[1]:.4f}")
+    print(f"EER: {eer[0]:.4f}, EER Threshold: {eer[1]:.4f}")
     print(f"Prob range: {min(outputs_list):.4f} to {max(outputs_list):.4f}")
 
-    preds = (np.array(outputs_list) > eer[1]).astype(int)
+    # Calculate predictions based on threshold type
+    preds, acc, used_threshold = calculate_predictions(
+        outputs_list, labels_list, eer, threshold_type, fixed_threshold
+    )
 
-    # Manual verification
-    manual_preds = [1 if prob > eer[1] else 0 for prob in outputs_list]
-    matches = sum(1 for i in range(len(preds)) if preds[i] == manual_preds[i])
-    print(f"Manual prediction matches: {matches}/{len(preds)}")
-
-    if matches != len(preds):
-        print("ERROR: Prediction calculation mismatch detected!")
-    # ================================
-
-    preds = (np.array(outputs_list) > eer[1]).astype(int)
-    acc = np.mean(np.array(labels_list) == np.array(preds))
-
-    return acc, auroc, eer, outputs_list, labels_list, file_paths_list, preds
+    return (
+        acc,
+        auroc,
+        eer,
+        outputs_list,
+        labels_list,
+        file_paths_list,
+        preds,
+        used_threshold,
+    )
 
 
 def save_results_to_file(
@@ -269,6 +296,8 @@ def save_results_to_file(
     labels_list,
     file_paths_list,
     preds,
+    used_threshold,
+    threshold_type,
 ):
     """Save detailed results to file"""
     with open(results_file, "a") as f:
@@ -278,7 +307,9 @@ def save_results_to_file(
         f.write(f"Overall Metrics:\n")
         f.write(f"  Accuracy: {acc:.4f}\n")
         f.write(f"  AUROC: {auroc:.4f}\n")
-        f.write(f"  EER: {eer[0]:.4f}\n\n")
+        f.write(f"  EER: {eer[0]:.4f}\n")
+        f.write(f"  EER Threshold: {eer[1]:.4f}\n")
+        f.write(f"  Used Threshold: {used_threshold:.4f} ({threshold_type})\n\n")
 
         f.write("Individual File Results:\n")
         f.write("Filename\tTrue_Label\tPredicted\tProb_Genuine\tConfidence\tCorrect\n")
@@ -299,7 +330,9 @@ def save_results_to_file(
         f.write("\n")
 
 
-def evaluate_foundation_models(mp3_dir, weights_dir, results_file):
+def evaluate_foundation_models(
+    mp3_dir, weights_dir, results_file, threshold_type, fixed_threshold
+):
     """Evaluate HuBert and Wav2Vec2BERT using main_fm functions"""
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -332,6 +365,8 @@ def evaluate_foundation_models(mp3_dir, weights_dir, results_file):
         collate_fn=safe_collate_fn,
     )
 
+    result_blocks = []
+
     for model_name, config in models_config.items():
         print(f"\nEvaluating {model_name}...")
 
@@ -361,10 +396,22 @@ def evaluate_foundation_models(mp3_dir, weights_dir, results_file):
 
         # Run evaluation with details
         try:
-            acc, auroc, eer, outputs_list, labels_list, file_paths_list, preds = (
-                run_validation_fm_with_details(
-                    model, feature_extractor, dataloader, config["sampling_rate"]
-                )
+            (
+                acc,
+                auroc,
+                eer,
+                outputs_list,
+                labels_list,
+                file_paths_list,
+                preds,
+                used_threshold,
+            ) = run_validation_fm_with_details(
+                model,
+                feature_extractor,
+                dataloader,
+                config["sampling_rate"],
+                threshold_type,
+                fixed_threshold,
             )
 
             # Save results to file
@@ -378,13 +425,31 @@ def evaluate_foundation_models(mp3_dir, weights_dir, results_file):
                 labels_list,
                 file_paths_list,
                 preds,
+                used_threshold,
+                threshold_type,
             )
+
+            block = _build_block(
+                model_name,
+                threshold_type,
+                eer,
+                used_threshold,
+                file_paths_list,
+                preds,
+                outputs_list,
+                labels_list,
+            )  # ← add
+            result_blocks.append(block)
 
         except Exception as e:
             print(f"Error evaluating {model_name}: {e}")
 
+        return result_blocks
 
-def evaluate_traditional_models(mp3_dir, weights_dir, results_file):
+
+def evaluate_traditional_models(
+    mp3_dir, weights_dir, results_file, threshold_type, fixed_threshold
+):
     """Evaluate traditional models: AASIST, RawGATST, RawNet2"""
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -415,6 +480,8 @@ def evaluate_traditional_models(mp3_dir, weights_dir, results_file):
         num_workers=0,
         collate_fn=safe_collate_fn,
     )
+
+    result_blocks = []
 
     for model_name, model_info in models_config.items():
         print(f"\nEvaluating {model_name}...")
@@ -463,8 +530,17 @@ def evaluate_traditional_models(mp3_dir, weights_dir, results_file):
 
         # Run evaluation with details
         try:
-            acc, auroc, eer, outputs_list, labels_list, file_paths_list, preds = (
-                run_validation_tm_with_details(config, dataloader, model, device)
+            (
+                acc,
+                auroc,
+                eer,
+                outputs_list,
+                labels_list,
+                file_paths_list,
+                preds,
+                used_threshold,
+            ) = run_validation_tm_with_details(
+                config, dataloader, model, device, threshold_type, fixed_threshold
             )
 
             # Save results to file
@@ -478,17 +554,168 @@ def evaluate_traditional_models(mp3_dir, weights_dir, results_file):
                 labels_list,
                 file_paths_list,
                 preds,
+                used_threshold,
+                threshold_type,
             )
+
+            block = _build_block(
+                model_name,
+                threshold_type,
+                eer,
+                used_threshold,
+                file_paths_list,
+                preds,
+                outputs_list,
+                labels_list,
+            )  # ← add
+            result_blocks.append(block)
 
         except Exception as e:
             print(f"Error evaluating {model_name}: {e}")
 
+    return result_blocks
+
+
+# ── Helper to convert raw per-file outputs into a plotting block ───────────────
+from collections import defaultdict
+import os, numpy as np
+
+_SPK = ("lw", "lhl", "jt", "gky")  # speakers we care about
+
+
+def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labels):
+    """
+    Collapse per-file results into the minimal structure needed by
+    plot_result_tables(), i.e.:
+
+        {
+          "title": title,
+          "threshold_type": threshold_type,
+          "eer": eer,                     # float
+          "threshold": thr,               # float
+          "data": { sid -> method -> (mean_conf, all_correct_bool) }
+        }
+    """
+    data = {sid: defaultdict(list) for sid in _SPK}
+    correct = {sid: defaultdict(list) for sid in _SPK}
+
+    for fp, p, pr, lab in zip(file_paths, preds, probs, labels):
+        fname = os.path.basename(fp)
+        sid, m = fname.split("_", 2)[:2]  #  "lw_OpenAI_xxx.mp3" → "lw", "OpenAI"
+        if sid not in _SPK:
+            continue
+        conf = pr if p == 1 else (1.0 - pr)  # confidence of predicted class
+        data[sid][m].append(conf)
+        correct[sid][m].append(int(p == lab))
+
+    # aggregate: mean confidence + “all correct?”
+    block = {
+        "title": title,
+        "threshold_type": threshold_type,
+        "eer": float(eer[0]),
+        "threshold": float(thr),
+        "data": {
+            sid: {
+                m: (float(np.mean(vals)), bool(all(correct[sid][m])))
+                for m, vals in methods.items()
+            }
+            for sid, methods in data.items()
+            if methods
+        },
+    }
+    return block
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# 📊  Minimal table-plotting helper
+# ──────────────────────────────────────────────────────────────────────────────
+import matplotlib.pyplot as plt
+
+# Four speakers we care about → pretty display names
+_DISPLAY_NAME = {
+    "lw": "Lawrence Wong",
+    "lhl": "Lee Hsien Loong",
+    "jt": "Josephine Teo",
+    "gky": "Gan Kim Yong",
+}
+
+
+def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
+    """
+    Draw one coloured table per `result_blocks` element and save to *outfile*.
+
+    Each *block* must be a dict shaped like:
+        {
+          "title": str,                # free text – becomes table title
+          "threshold_type": "fixed",   # or "eer"
+          "eer": 0.1234,
+          "threshold": 0.5000,
+          "data": {                    # id -> method -> (conf, correct)
+            "lw":  {"OpenAI": (0.72, True), ...},
+            ...
+          }
+        }
+    """
+
+    speakers = ("lw", "lhl", "jt", "gky")
+    n = len(result_blocks)
+    fig, axs = plt.subplots(n, 1, figsize=(10, 2 + 2 * n))
+    if n == 1:  # keep API consistent for n=1
+        axs = (axs,)
+
+    for ax, blk in zip(axs, result_blocks):
+        # Determine the union of all methods present in this block
+        methods = sorted({m for sid in speakers for m in blk["data"].get(sid, {})})
+        header = ["Name"] + methods
+
+        cell_txt, cell_col = [], []
+        for sid in speakers:
+            row_txt = [_DISPLAY_NAME[sid]]
+            row_col = ["white"]  # first column stays white
+            for m in methods:
+                score, correct = blk["data"].get(sid, {}).get(m, (None, None))
+                if score is None:  # missing value ⇒ grey
+                    row_txt.append("")
+                    row_col.append("lightgrey")
+                else:
+                    row_txt.append(f"{score * 100:.2f}%")
+                    row_col.append("palegreen" if correct else "lightcoral")
+            cell_txt.append(row_txt)
+            cell_col.append(row_col)
+
+        tbl = ax.table(
+            cellText=cell_txt, colLabels=header, cellColours=cell_col, loc="center"
+        )
+        tbl.auto_set_font_size(False)
+        tbl.set_fontsize(8)
+        ax.axis("off")
+
+        ax.set_title(
+            f"{blk['title']} – {blk['threshold_type'].upper()} "
+            f"(EER={blk['eer']:.4f}, thr={blk['threshold']:.4f})",
+            pad=10,
+            fontsize=10,
+        )
+
+    plt.tight_layout()
+    plt.savefig(outfile, dpi=300)
+    print(f"[plot_result_tables] saved coloured tables → {outfile}")
+
 
 def main():
+    # ============ CONFIGURATION ============
+    # Threshold settings - MODIFY THESE AS NEEDED:
+
+    threshold_type = "fixed"  # Options: "eer" or "fixed"
+    fixed_threshold = 0.5  # only Used when threshold_type="fixed"
+
+    # =======================================
+
     # Paths
     mp3_dir = "../samples"  # Directory containing MP3 files
     weights_dir = "./models/weights"  # Directory containing model weights
     results_file = "results.txt"  # Output results file
+    table_file = "tables.png"
 
     if not os.path.exists(mp3_dir):
         print(f"MP3 directory {mp3_dir} not found!")
@@ -500,24 +727,39 @@ def main():
         f.write("=" * 60 + "\n")
         f.write(f"MP3 files directory: {mp3_dir}\n")
         f.write(f"Model weights directory: {weights_dir}\n")
+        f.write(f"Threshold type: {threshold_type}\n")
+        if threshold_type == "fixed":
+            f.write(f"Fixed threshold: {fixed_threshold}\n")
+        f.write("\n")
 
     print("=== Audio Deepfake Detection Evaluation ===")
     print(f"MP3 files directory: {mp3_dir}")
     print(f"Model weights directory: {weights_dir}")
+    print(f"Threshold type: {threshold_type}")
+    if threshold_type == "fixed":
+        print(f"Fixed threshold: {fixed_threshold}")
     print(f"Results will be saved to: {results_file}")
 
     # Evaluate foundation models
     print("\n--- Foundation Models ---")
-    evaluate_foundation_models(mp3_dir, weights_dir, results_file)
+    fm_blocks = evaluate_foundation_models(
+        mp3_dir, weights_dir, results_file, threshold_type, fixed_threshold
+    )
 
     # Evaluate traditional models (AASIST, RawGATST, RawNet2)
     print("\n--- Traditional Models ---")
-    evaluate_traditional_models(mp3_dir, weights_dir, results_file)
+    tm_blocks = evaluate_traditional_models(
+        mp3_dir, weights_dir, results_file, threshold_type, fixed_threshold
+    )
 
     print(f"\n" + "=" * 50)
     print("EVALUATION COMPLETE")
     print(f"Detailed results saved to: {results_file}")
     print("=" * 50)
+
+    plot_result_tables(
+        fm_blocks + tm_blocks, outfile=table_file
+    )  # 👈 single call – that's it!
 
 
 if __name__ == "__main__":
