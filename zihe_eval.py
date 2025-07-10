@@ -753,7 +753,7 @@ def main():
     # ============ CONFIGURATION ============
     # Threshold settings - MODIFY THESE AS NEEDED:
 
-    threshold_type = "fixed"  # Options: "eer" or "fixed"
+    threshold_type = "eer"  # Options: "eer" or "fixed"
     fixed_threshold = 0.5  # only Used when threshold_type="fixed"
 
     # =======================================
@@ -761,8 +761,8 @@ def main():
     # Paths
     mp3_dir = "../samples"  # Directory containing MP3 files
     weights_dir = "./models/weights"  # Directory containing model weights
-    results_file = "results.txt"  # Output results file
-    table_file = "tables.png"
+    results_file = "results_eer.txt"  # Output results file
+    table_file = "tables_eer.png"
 
     if not os.path.exists(mp3_dir):
         print(f"MP3 directory {mp3_dir} not found!")
