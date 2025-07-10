@@ -9,12 +9,11 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoFeatureExtractor
 import numpy as np
 from tqdm import tqdm
-from sklearn.metrics import roc_auc_score
+from sklearn.metrics import roc_auc_score, f1_score  # ← added f1_score
 import torch.nn.functional as F
 
 # Import existing modules
 from main_fm import run_validation as run_validation_fm
-from main_tm import run_validation as run_validation_tm
 from models import Hubert, Wav2Vec2BERT, Wav2Vec2
 from utils import get_model, compute_eer
 from collections import OrderedDict
@@ -586,16 +585,12 @@ _SPK = ("lw", "lhl", "jt", "gky")  # speakers we care about
 def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labels):
     """
     Collapse per-file results into the minimal structure needed by
-    plot_result_tables(), i.e.:
-
-        {
-          "title": title,
-          "threshold_type": threshold_type,
-          "eer": eer,                     # float
-          "threshold": thr,               # float
-          "data": { sid -> method -> (mean_conf, all_correct_bool) }
-        }
+    plot_result_tables(), now with AUROC & F1 in the metadata.
     """
+    # --- Compute overall AUROC and F1 for this model -------------------------
+    auroc = roc_auc_score(labels, probs)
+    f1 = f1_score(labels, preds)
+
     data = {sid: defaultdict(list) for sid in _SPK}
     correct = {sid: defaultdict(list) for sid in _SPK}
 
@@ -614,6 +609,8 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
         "threshold_type": threshold_type,
         "eer": float(eer[0]),
         "threshold": float(thr),
+        "auroc": float(auroc),  # ← added
+        "f1": float(f1),  # ← added
         "data": {
             sid: {
                 m: (float(np.mean(vals)), bool(all(correct[sid][m])))
@@ -632,16 +629,6 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
 import matplotlib.pyplot as plt
 
 # Four speakers we care about → pretty display names
-_DISPLAY_NAME = {
-    "lw": "Lawrence Wong",
-    "lhl": "Lee Hsien Loong",
-    "jt": "Josephine Teo",
-    "gky": "Gan Kim Yong",
-}
-# ── Pretty table-plot helper ───────────────────────────────────────────────────
-import matplotlib.pyplot as plt
-
-# Speaker IDs → display names
 _DISPLAY_NAME = {
     "lw": "Lawrence Wong",
     "lhl": "Lee Hsien Loong",
@@ -682,6 +669,7 @@ def _canon(m: str) -> str:
 def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
     """
     Draw one coloured table per *result_blocks* element (see _build_block()).
+    Header now shows AUROC and F1 as requested.
     """
     speakers = ("lw", "lhl", "jt", "gky")
     n = len(result_blocks)
@@ -733,7 +721,9 @@ def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
         ttl = (
             f"{blk['title']} – "
             f"Threshold={blk['threshold']:.3f}, "
-            f"EER={blk['eer']:.3f} – "
+            f"EER={blk['eer']:.3f}, "
+            f"AUROC={blk.get('auroc', 0):.3f}, "  # ← added
+            f"F1={blk.get('f1', 0):.3f} – "  # ← added
             f"{'Fixed_Threshold' if blk['threshold_type'] == 'fixed' else 'EER_Threshold'}"
         )
         ax.set_title(ttl, pad=2, fontsize=9)  # pad ↓ keeps title close to table
