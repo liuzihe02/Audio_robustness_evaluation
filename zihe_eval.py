@@ -586,41 +586,106 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
     """
     Collapse per-file results into the minimal structure needed by
     plot_result_tables(), now with AUROC & F1 in the metadata.
+    Handles both POH politicians and voice samples.
     """
     # --- Compute overall AUROC and F1 for this model -------------------------
     auroc = roc_auc_score(labels, probs)
     f1 = f1_score(labels, preds)
-    acc = accuracy_score(labels, preds)  # ← compute accuracy
+    acc = accuracy_score(labels, preds)
 
+    # Initialize data structures for both POH and voice samples
     data = {sid: defaultdict(list) for sid in _SPK}
     correct = {sid: defaultdict(list) for sid in _SPK}
 
+    # Voice samples data structures
+    voice_data = {sid: defaultdict(list) for sid in ("one", "two")}
+    voice_correct = {sid: defaultdict(list) for sid in ("one", "two")}
+
+    print(f"\n=== DEBUG {title} ===")
+    print(f"Processing {len(file_paths)} files...")
+
     for fp, p, pr, lab in zip(file_paths, preds, probs, labels):
         fname = os.path.basename(fp)
-        sid, m = fname.split("_", 2)[:2]  #  "lw_OpenAI_xxx.mp3" → "lw", "OpenAI"
-        if sid not in _SPK:
-            continue
-        conf = pr if p == 1 else (1.0 - pr)  # confidence of predicted class
-        data[sid][m].append(conf)
-        correct[sid][m].append(int(p == lab))
+        print(f"Processing: {fname}")
 
-    # aggregate: mean confidence + “all correct?”
+        conf = pr if p == 1 else (1.0 - pr)  # confidence of predicted class
+        is_correct = int(p == lab)
+
+        # Handle voice samples with "voice_X_Y.mp3" format
+        if fname.startswith("voice_"):
+            # Extract from "voice_one_cloned.mp3" → sid="one", method="cloned"
+            parts = fname.replace("voice_", "").replace(".mp3", "").split("_")
+            if len(parts) >= 2:
+                sid, method = parts[0], parts[1]
+                print(f"  → Voice sample: sid='{sid}', method='{method}'")
+                if sid in ("one", "two"):
+                    voice_data[sid][method].append(conf)
+                    voice_correct[sid][method].append(is_correct)
+                    continue
+
+        # Handle POH politicians with "speaker_method.mp3" format
+        parts = fname.split("_")
+        if len(parts) >= 2:
+            sid, method = parts[0], parts[1]
+            print(f"  → POH format: sid='{sid}', method='{method}'")
+
+            if sid in _SPK:
+                print(f"    ✓ POH politician: {sid}")
+                data[sid][method].append(conf)
+                correct[sid][method].append(is_correct)
+            else:
+                print(f"    ? Unknown speaker: {sid}")
+        else:
+            print(f"  WARNING: Unexpected filename format: {fname}")
+
+    # Print summary of what was found
+    print(f"\nPOH data found:")
+    for sid in _SPK:
+        if data[sid]:
+            print(f"  {sid}: {dict(data[sid])}")
+        else:
+            print(f"  {sid}: No data")
+
+    print(f"\nVoice data found:")
+    for sid in ("one", "two"):
+        if voice_data[sid]:
+            print(f"  {sid}: {dict(voice_data[sid])}")
+        else:
+            print(f"  {sid}: No data")
+
+    # Aggregate POH data: mean confidence + "all correct?"
+    poh_results = {
+        sid: {
+            method: (float(np.mean(vals)), bool(all(correct[sid][method])))
+            for method, vals in methods.items()
+        }
+        for sid, methods in data.items()
+        if methods
+    }
+
+    # Aggregate voice data: mean confidence + "all correct?"
+    voice_results = {
+        sid: {
+            method: (float(np.mean(vals)), bool(all(voice_correct[sid][method])))
+            for method, vals in methods.items()
+        }
+        for sid, methods in voice_data.items()
+        if methods
+    }
+
+    print(f"\nFinal POH results: {poh_results}")
+    print(f"Final voice results: {voice_results}")
+
     block = {
         "title": title,
         "threshold_type": threshold_type,
         "eer": float(eer[0]),
         "threshold": float(thr),
-        "auroc": float(auroc),  # ← added
-        "f1": float(f1),  # ← added
+        "auroc": float(auroc),
+        "f1": float(f1),
         "acc": float(acc),
-        "data": {
-            sid: {
-                m: (float(np.mean(vals)), bool(all(correct[sid][m])))
-                for m, vals in methods.items()
-            }
-            for sid, methods in data.items()
-            if methods
-        },
+        "data": poh_results,  # ← POH politician data
+        "voice_data": voice_results,  # ← Voice sample data
     }
     return block
 
@@ -668,7 +733,7 @@ def _canon(m: str) -> str:
     return m  # fall-back: use as-is
 
 
-def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
+def plot_poh_tables(result_blocks, outfile: str = "tables.png") -> None:
     """
     Draw one coloured table per *result_blocks* element (see _build_block()).
 
@@ -749,6 +814,80 @@ def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
     print(f"[plot_result_tables] saved coloured tables → {outfile}")
 
 
+def plot_voice_tables(result_blocks, outfile: str = "voice_tables.png") -> None:
+    """
+    Draw voice sample tables similar to the main POH tables.
+    """
+    import matplotlib.pyplot as plt
+
+    # ── 1. CONFIG ────────────────────────────────────────────────────────────
+    voice_speakers = ("one", "two")
+    voice_methods = ["original", "cloned"]
+    voice_labels = {"original": "Original", "cloned": "Cloned"}
+    voice_names = {"one": "Voice One", "two": "Voice Two"}
+
+    # ── 2. CREATE FIGURE ─────────────────────────────────────────────────────
+    n = len(result_blocks)
+    fig, axs = plt.subplots(
+        n, 1, figsize=(6, 2 + 1.5 * n)
+    )  # Smaller width for 2 columns
+    if n == 1:
+        axs = (axs,)
+
+    # ── 3. ONE TABLE PER RESULT BLOCK ───────────────────────────────────────
+    for ax, blk in zip(axs, result_blocks):
+        # Build cell text & colours
+        header = ["Name"] + [voice_labels[c] for c in voice_methods]
+        cell_txt, cell_col = [], []
+
+        for sid in voice_speakers:
+            row_txt = [voice_names[sid]]
+            row_col = ["white"]  # first cell (names) is white
+
+            for method in voice_methods:
+                entry = blk.get("voice_data", {}).get(sid, {}).get(method)
+                if entry is None:  # missing entry → grey cell
+                    row_txt.append("")
+                    row_col.append("lightgrey")
+                else:  # entry present
+                    score, correct = entry
+                    row_txt.append(f"{score * 100:.1f}%")
+                    row_col.append("palegreen" if correct else "lightcoral")
+
+            cell_txt.append(row_txt)
+            cell_col.append(row_col)
+
+        # Render the table
+        tbl = ax.table(
+            cellText=cell_txt,
+            colLabels=header,
+            cellColours=cell_col,
+            loc="center",
+        )
+        tbl.auto_set_font_size(False)
+        tbl.set_fontsize(10)
+        ax.axis("off")
+
+        # Two-line subtitle
+        title_line1 = (
+            f"{blk['title']} – Voice Samples – "
+            f"{'fixed_threshold' if blk['threshold_type'] == 'fixed' else 'eer_threshold'}"
+        )
+        title_line2 = (
+            f"Threshold={blk['threshold']:.3f}, "
+            f"EER={blk['eer']:.3f}, "
+            f"Accuracy={blk.get('acc', 0):.3f}, "
+            f"AUROC={blk.get('auroc', 0):.3f}, "
+            f"F1@Threshold={blk.get('f1', 0):.3f}"
+        )
+        ax.set_title(f"{title_line1}\n{title_line2}", pad=3, fontsize=11)
+
+    # ── 4. SAVE FIGURE ───────────────────────────────────────────────────────
+    plt.tight_layout()
+    plt.savefig(outfile, dpi=300, bbox_inches="tight")
+    print(f"[plot_voice_tables] saved voice tables → {outfile}")
+
+
 def main():
     # ============ CONFIGURATION ============
     # Threshold settings - MODIFY THESE AS NEEDED:
@@ -762,7 +901,8 @@ def main():
     mp3_dir = "../samples"  # Directory containing MP3 files
     weights_dir = "./models/weights"  # Directory containing model weights
     results_file = "results_eer.txt"  # Output results file
-    table_file = "tables_eer.png"
+    poh_table_file = "poh_tables_eer.png"
+    voice_table_file = "voice_tables_eer.png"
 
     if not os.path.exists(mp3_dir):
         print(f"MP3 directory {mp3_dir} not found!")
@@ -804,9 +944,9 @@ def main():
     print(f"Detailed results saved to: {results_file}")
     print("=" * 50)
 
-    plot_result_tables(
-        fm_blocks + tm_blocks, outfile=table_file
-    )  # 👈 single call – that's it!
+    plot_poh_tables(fm_blocks + tm_blocks, outfile=poh_table_file)
+
+    plot_voice_tables(fm_blocks + tm_blocks, outfile=voice_table_file)
 
 
 if __name__ == "__main__":
