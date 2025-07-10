@@ -337,38 +337,27 @@ def evaluate_foundation_models(mp3_dir, weights_dir, results_file):
             print(f"Error evaluating {model_name}: {e}")
 
 
-def evaluate_aasist(mp3_dir, weights_dir, results_file):
-    """Evaluate AASIST using main_tm functions"""
+def evaluate_traditional_models(mp3_dir, weights_dir, results_file):
+    """Evaluate traditional models: AASIST, RawGATST, RawNet2"""
     device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    # Load AASIST config
-    config_path = "./config/AASIST.conf"
-    with open(config_path, "r") as f:
-        config = json.loads(f.read())
-
-    # Update model path to weights directory
-    config["model_path"] = os.path.join(weights_dir, "AASIST.pth")
-
-    # Initialize model
-    model = get_model(config["model_config"], device)
-
-    # Load weights
-    if os.path.exists(config["model_path"]):
-        state_dict = torch.load(config["model_path"], map_location=device)
-
-        # Handle DataParallel weights if needed
-        if list(state_dict.keys())[0].startswith("module."):
-            new_state_dict = OrderedDict()
-            for k, v in state_dict.items():
-                name = k[7:] if k.startswith("module.") else k
-                new_state_dict[name] = v
-            state_dict = new_state_dict
-
-        model.load_state_dict(state_dict)
-        print(f"Loaded AASIST weights from {config['model_path']}")
-    else:
-        print(f"Warning: AASIST weight file {config['model_path']} not found")
-        return
+    # Model configurations with manually specified weight paths
+    models_config = {
+        "AASIST": {
+            "config_path": "./config/AASIST.conf",
+            "weight_path": os.path.join(
+                weights_dir, "AASIST.pth"
+            ),  # Adjust path as needed
+        },
+        # "RawGATST": {
+        #     "config_path": "./config/RawGATST.conf",
+        #     "weight_path": "./models/weights/rawgatst.pth",  # **UPDATE THIS PATH**
+        # },
+        "RawNet2": {
+            "config_path": "./config/RawNet2.conf",
+            "weight_path": "./models/weights/rawnet2.pth",  # **UPDATE THIS PATH**
+        },
+    }
 
     # Create dataset and dataloader with safe collate
     dataset = MP3Dataset(mp3_dir)
@@ -380,27 +369,72 @@ def evaluate_aasist(mp3_dir, weights_dir, results_file):
         collate_fn=safe_collate_fn,
     )
 
-    # Run evaluation with details
-    try:
-        acc, auroc, eer, outputs_list, labels_list, file_paths_list, preds = (
-            run_validation_tm_with_details(config, dataloader, model, device)
-        )
+    for model_name, model_info in models_config.items():
+        print(f"\nEvaluating {model_name}...")
 
-        # Save results to file
-        save_results_to_file(
-            results_file,
-            "AASIST",
-            acc,
-            auroc,
-            eer,
-            outputs_list,
-            labels_list,
-            file_paths_list,
-            preds,
-        )
+        # Check if weight file exists
+        if not os.path.exists(model_info["weight_path"]):
+            print(
+                f"Warning: Weight file {model_info['weight_path']} not found, skipping {model_name}"
+            )
+            continue
 
-    except Exception as e:
-        print(f"Error evaluating AASIST: {e}")
+        # Load config
+        if not os.path.exists(model_info["config_path"]):
+            print(
+                f"Warning: Config file {model_info['config_path']} not found, skipping {model_name}"
+            )
+            continue
+
+        with open(model_info["config_path"], "r") as f:
+            config = json.loads(f.read())
+
+        # Initialize model
+        try:
+            model = get_model(config["model_config"], device)
+        except Exception as e:
+            print(f"Error initializing {model_name}: {e}")
+            continue
+
+        # Load weights
+        try:
+            state_dict = torch.load(model_info["weight_path"], map_location=device)
+
+            # Handle DataParallel weights if needed
+            if list(state_dict.keys())[0].startswith("module."):
+                new_state_dict = OrderedDict()
+                for k, v in state_dict.items():
+                    name = k[7:] if k.startswith("module.") else k
+                    new_state_dict[name] = v
+                state_dict = new_state_dict
+
+            model.load_state_dict(state_dict)
+            print(f"Loaded {model_name} weights from {model_info['weight_path']}")
+        except Exception as e:
+            print(f"Error loading weights for {model_name}: {e}")
+            continue
+
+        # Run evaluation with details
+        try:
+            acc, auroc, eer, outputs_list, labels_list, file_paths_list, preds = (
+                run_validation_tm_with_details(config, dataloader, model, device)
+            )
+
+            # Save results to file
+            save_results_to_file(
+                results_file,
+                model_name,
+                acc,
+                auroc,
+                eer,
+                outputs_list,
+                labels_list,
+                file_paths_list,
+                preds,
+            )
+
+        except Exception as e:
+            print(f"Error evaluating {model_name}: {e}")
 
 
 def main():
@@ -411,10 +445,6 @@ def main():
 
     if not os.path.exists(mp3_dir):
         print(f"MP3 directory {mp3_dir} not found!")
-        return
-
-    if not os.path.exists(weights_dir):
-        print(f"Weights directory {weights_dir} not found!")
         return
 
     # Clear results file
@@ -433,9 +463,9 @@ def main():
     print("\n--- Foundation Models ---")
     evaluate_foundation_models(mp3_dir, weights_dir, results_file)
 
-    # Evaluate AASIST
-    print("\n--- Traditional Model ---")
-    evaluate_aasist(mp3_dir, weights_dir, results_file)
+    # Evaluate traditional models (AASIST, RawGATST, RawNet2)
+    print("\n--- Traditional Models ---")
+    evaluate_traditional_models(mp3_dir, weights_dir, results_file)
 
     print(f"\n" + "=" * 50)
     print("EVALUATION COMPLETE")

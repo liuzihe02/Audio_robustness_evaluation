@@ -4,47 +4,6 @@ MP3 files directory: ../samples
 Model weights directory: ./models/weights
 
 ============================================================
-MODEL: WAV2VEC2
-============================================================
-Overall Metrics:
-  Accuracy: 0.5000
-  AUROC: 0.3674
-  EER: 0.5000
-
-Individual File Results:
-Filename	True_Label	Predicted	Confidence	Correct
---------------------------------------------------------------------------------
-voice_two_cloned.mp3	0	1	0.8979	✗
-lw_oaip.mp3	0	1	0.8979	✗
-gky_ov.mp3	0	0	0.8979	✓
-lw_ov.mp3	0	0	0.8979	✓
-gky_cq.mp3	0	1	0.8979	✗
-jt_ov.mp3	0	1	0.8979	✗
-voice_one_original.mp3	1	1	0.8979	✓
-lw_cq.mp3	0	1	0.8979	✗
-jt_cq.mp3	0	1	0.8979	✗
-jt_oaii.mp3	0	1	0.8979	✗
-lhl_oaip.mp3	0	1	0.8979	✗
-gky_el.mp3	0	0	0.8979	✓
-lhl_original.mp3	1	1	0.8979	✓
-lhl_cq.mp3	0	1	0.8979	✗
-jt_original.mp3	1	0	0.8979	✗
-lw_oaii.mp3	0	0	0.8979	✓
-voice_two_original.mp3	1	0	0.8979	✗
-voice_one_cloned.mp3	0	0	0.8979	✓
-gky_original.mp3	1	1	0.8979	✓
-gky_oaip.mp3	0	0	0.8979	✓
-lhl_el.mp3	0	0	0.8979	✓
-jt_oaip.mp3	0	0	0.8979	✓
-lhl_oaii.mp3	0	1	0.8979	✗
-lw_el.mp3	0	0	0.8979	✓
-lw_original.mp3	1	0	0.8979	✗
-jt_el.mp3	0	0	0.8979	✓
-lhl_ov.mp3	0	1	0.8979	✗
-gky_oaii.mp3	0	0	0.8979	✓
-
-
-============================================================
 MODEL: WAVE2VEC2BERT
 ============================================================
 Overall Metrics:
@@ -124,4 +83,45 @@ lw_original.mp3	1	0	0.0072	✗
 jt_el.mp3	0	1	1.0000	✗
 lhl_ov.mp3	0	0	0.9762	✓
 gky_oaii.mp3	0	0	0.0143	✓
+
+
+============================================================
+MODEL: RAWNET2
+============================================================
+Overall Metrics:
+  Accuracy: 0.5357
+  AUROC: 0.6515
+  EER: 0.4773
+
+Individual File Results:
+Filename	True_Label	Predicted	Confidence	Correct
+--------------------------------------------------------------------------------
+voice_two_cloned.mp3	0	0	0.0000	✓
+lw_oaip.mp3	0	0	0.0001	✓
+gky_ov.mp3	0	1	0.0062	✗
+lw_ov.mp3	0	0	0.0003	✓
+gky_cq.mp3	0	0	0.0000	✓
+jt_ov.mp3	0	1	0.9423	✗
+voice_one_original.mp3	1	0	0.0008	✗
+lw_cq.mp3	0	0	0.0000	✓
+jt_cq.mp3	0	1	0.8723	✗
+jt_oaii.mp3	0	1	0.5163	✗
+lhl_oaip.mp3	0	0	0.0000	✓
+gky_el.mp3	0	1	0.0054	✗
+lhl_original.mp3	1	1	0.8329	✓
+lhl_cq.mp3	0	0	0.0000	✓
+jt_original.mp3	1	1	0.9707	✓
+lw_oaii.mp3	0	1	0.2296	✗
+voice_two_original.mp3	1	0	0.0004	✗
+voice_one_cloned.mp3	0	0	0.0000	✓
+gky_original.mp3	1	1	0.5118	✓
+gky_oaip.mp3	0	0	0.0000	✓
+lhl_el.mp3	0	0	0.0001	✓
+jt_oaip.mp3	0	1	0.0067	✗
+lhl_oaii.mp3	0	1	0.0037	✗
+lw_el.mp3	0	1	0.0022	✗
+lw_original.mp3	1	0	0.0000	✗
+jt_el.mp3	0	1	0.9345	✗
+lhl_ov.mp3	0	0	0.0000	✓
+gky_oaii.mp3	0	0	0.0001	✓
 
