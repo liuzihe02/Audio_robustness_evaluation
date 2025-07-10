@@ -1,0 +1,4 @@
+Audio Deepfake Detection Evaluation Results
+============================================================
+MP3 files directory: ../samples
+Model weights directory: ./models/weights
