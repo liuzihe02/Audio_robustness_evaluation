@@ -638,51 +638,90 @@ _DISPLAY_NAME = {
     "jt": "Josephine Teo",
     "gky": "Gan Kim Yong",
 }
+# ── Pretty table-plot helper ───────────────────────────────────────────────────
+import matplotlib.pyplot as plt
+
+# Speaker IDs → display names
+_DISPLAY_NAME = {
+    "lw": "Lawrence Wong",
+    "lhl": "Lee Hsien Loong",
+    "jt": "Josephine Teo",
+    "gky": "Gan Kim Yong",
+}
+
+# Canonical column order + pretty labels
+_METHOD_ORDER = ["original", "oaii", "oaip", "el", "ov", "cq"]
+_METHOD_LABELS = {
+    "original": "Original",
+    "oaii": "OpenAI Instance",
+    "oaip": "OpenAI Pro",
+    "el": "ElevenLabs",
+    "ov": "OpenVoice",
+    "cq": "Coqui (Bark)",
+}
+
+
+def _canon(m: str) -> str:
+    """Map raw method strings (sometimes messy) to canonical short codes."""
+    m = m.lower().replace(".mp3", "")  # strip extension just in case
+    if "openvoice" in m or m == "ov":
+        return "ov"
+    if "openai" in m and "pro" in m:
+        return "oaip"
+    if "openai" in m:
+        return "oaii"
+    if "eleven" in m or m == "el":
+        return "el"
+    if "coqui" in m or "bark" in m or m == "cq":
+        return "cq"
+    if "orig" in m or "genuine" in m:
+        return "original"
+    return m  # fall-back: use as-is
 
 
 def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
     """
-    Draw one coloured table per `result_blocks` element and save to *outfile*.
-
-    Each *block* must be a dict shaped like:
-        {
-          "title": str,                # free text – becomes table title
-          "threshold_type": "fixed",   # or "eer"
-          "eer": 0.1234,
-          "threshold": 0.5000,
-          "data": {                    # id -> method -> (conf, correct)
-            "lw":  {"OpenAI": (0.72, True), ...},
-            ...
-          }
-        }
+    Draw one coloured table per *result_blocks* element (see _build_block()).
     """
-
     speakers = ("lw", "lhl", "jt", "gky")
     n = len(result_blocks)
     fig, axs = plt.subplots(n, 1, figsize=(10, 2 + 2 * n))
-    if n == 1:  # keep API consistent for n=1
+    if n == 1:  # make iterable for n=1
         axs = (axs,)
 
     for ax, blk in zip(axs, result_blocks):
-        # Determine the union of all methods present in this block
-        methods = sorted({m for sid in speakers for m in blk["data"].get(sid, {})})
-        header = ["Name"] + methods
+        # ---- build cell texts & colours --------------------------------------
+        header = ["Name"] + [_METHOD_LABELS[c] for c in _METHOD_ORDER]
+        cell_txt = []
+        cell_col = []
 
-        cell_txt, cell_col = [], []
         for sid in speakers:
             row_txt = [_DISPLAY_NAME[sid]]
-            row_col = ["white"]  # first column stays white
-            for m in methods:
-                score, correct = blk["data"].get(sid, {}).get(m, (None, None))
-                if score is None:  # missing value ⇒ grey
+            row_col = ["white"]  # first column fixed white
+
+            # scan canonical methods in requested order
+            for code in _METHOD_ORDER:
+                # locate the first recorded entry whose canonical code matches
+                entry = next(
+                    (
+                        v
+                        for k, v in blk["data"].get(sid, {}).items()
+                        if _canon(k) == code
+                    ),
+                    None,
+                )
+                if entry is None:  # missing → grey cell
                     row_txt.append("")
                     row_col.append("lightgrey")
-                else:
+                else:  # present → coloured by correctness
+                    score, correct = entry
                     row_txt.append(f"{score * 100:.2f}%")
                     row_col.append("palegreen" if correct else "lightcoral")
+
             cell_txt.append(row_txt)
             cell_col.append(row_col)
 
+        # ---- render the table ------------------------------------------------
         tbl = ax.table(
             cellText=cell_txt, colLabels=header, cellColours=cell_col, loc="center"
         )
@@ -690,12 +729,14 @@ def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
         tbl.set_fontsize(8)
         ax.axis("off")
 
-        ax.set_title(
-            f"{blk['title']} – {blk['threshold_type'].upper()} "
-            f"(EER={blk['eer']:.4f}, thr={blk['threshold']:.4f})",
-            pad=10,
-            fontsize=10,
+        # ---- compact, reformatted heading ------------------------------------
+        ttl = (
+            f"{blk['title']} – "
+            f"Threshold={blk['threshold']:.3f}, "
+            f"EER={blk['eer']:.3f} – "
+            f"{'Fixed_Threshold' if blk['threshold_type'] == 'fixed' else 'EER_Threshold'}"
         )
+        ax.set_title(ttl, pad=2, fontsize=9)  # pad ↓ keeps title close to table
 
     plt.tight_layout()
     plt.savefig(outfile, dpi=300)
