@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 from transformers import AutoFeatureExtractor
 import numpy as np
 from tqdm import tqdm
-from sklearn.metrics import roc_auc_score, f1_score  # ← added f1_score
+from sklearn.metrics import roc_auc_score, f1_score, accuracy_score
 import torch.nn.functional as F
 
 # Import existing modules
@@ -590,6 +590,7 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
     # --- Compute overall AUROC and F1 for this model -------------------------
     auroc = roc_auc_score(labels, probs)
     f1 = f1_score(labels, preds)
+    acc = accuracy_score(labels, preds)  # ← compute accuracy
 
     data = {sid: defaultdict(list) for sid in _SPK}
     correct = {sid: defaultdict(list) for sid in _SPK}
@@ -611,6 +612,7 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
         "threshold": float(thr),
         "auroc": float(auroc),  # ← added
         "f1": float(f1),  # ← added
+        "acc": float(acc),
         "data": {
             sid: {
                 m: (float(np.mean(vals)), bool(all(correct[sid][m])))
@@ -669,27 +671,34 @@ def _canon(m: str) -> str:
 def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
     """
     Draw one coloured table per *result_blocks* element (see _build_block()).
-    Header now shows AUROC and F1 as requested.
+
+    Figure title  : “Results and Confidence Scores”
+    Row order     : Lawrence Wong, Gan Kim Yong, Lee Hsien Loong, Josephine Teo
+    Heading lines :   {model_name} – {threshold_type}
+                      Thr={thr:.3f}, EER={eer:.3f}, AUROC={auroc:.3f}, F1@Thr={f1:.3f}
     """
-    speakers = ("lw", "lhl", "jt", "gky")
+    import matplotlib.pyplot as plt
+
+    # ── 1. CONFIG ────────────────────────────────────────────────────────────
+    speakers = ("lw", "gky", "lhl", "jt")  # ← reordered to match screenshot
+
+    # ── 2. CREATE FIGURE ─────────────────────────────────────────────────────
     n = len(result_blocks)
     fig, axs = plt.subplots(n, 1, figsize=(10, 2 + 2 * n))
-    if n == 1:  # make iterable for n=1
-        axs = (axs,)
+    if n == 1:
+        axs = (axs,)  # make iterable for single-row case
 
+    # ── 3. ONE TABLE PER RESULT BLOCK ───────────────────────────────────────
     for ax, blk in zip(axs, result_blocks):
-        # ---- build cell texts & colours --------------------------------------
+        # ---------- build cell text & colours --------------------------------
         header = ["Name"] + [_METHOD_LABELS[c] for c in _METHOD_ORDER]
-        cell_txt = []
-        cell_col = []
+        cell_txt, cell_col = [], []
 
         for sid in speakers:
             row_txt = [_DISPLAY_NAME[sid]]
-            row_col = ["white"]  # first column fixed white
+            row_col = ["white"]  # first cell (names) is white
 
-            # scan canonical methods in requested order
             for code in _METHOD_ORDER:
-                # locate the first recorded entry whose canonical code matches
                 entry = next(
                     (
                         v
@@ -698,10 +707,10 @@ def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
                     ),
                     None,
                 )
-                if entry is None:  # missing → grey cell
+                if entry is None:  # missing entry → grey cell
                     row_txt.append("")
                     row_col.append("lightgrey")
-                else:  # present → coloured by correctness
+                else:  # entry present
                     score, correct = entry
                     row_txt.append(f"{score * 100:.2f}%")
                     row_col.append("palegreen" if correct else "lightcoral")
@@ -709,26 +718,33 @@ def plot_result_tables(result_blocks, outfile: str = "tables.png") -> None:
             cell_txt.append(row_txt)
             cell_col.append(row_col)
 
-        # ---- render the table ------------------------------------------------
+        # ---------- render the table -----------------------------------------
         tbl = ax.table(
-            cellText=cell_txt, colLabels=header, cellColours=cell_col, loc="center"
+            cellText=cell_txt,
+            colLabels=header,
+            cellColours=cell_col,
+            loc="center",
         )
         tbl.auto_set_font_size(False)
         tbl.set_fontsize(8)
         ax.axis("off")
 
-        # ---- compact, reformatted heading ------------------------------------
-        ttl = (
+        # ---------- two-line subplot title -----------------------------------
+        title_line1 = (
             f"{blk['title']} – "
+            f"{'fixed_threshold' if blk['threshold_type'] == 'fixed' else 'eer_threshold'}"
+        )
+        title_line2 = (
             f"Threshold={blk['threshold']:.3f}, "
             f"EER={blk['eer']:.3f}, "
-            f"AUROC={blk.get('auroc', 0):.3f}, "  # ← added
-            f"F1={blk.get('f1', 0):.3f} – "  # ← added
-            f"{'Fixed_Threshold' if blk['threshold_type'] == 'fixed' else 'EER_Threshold'}"
+            f"Accuracy={blk.get('acc', 0):.3f}, "
+            f"AUROC={blk.get('auroc', 0):.3f}, "
+            f"F1@Threshold={blk.get('f1', 0):.3f}"
         )
-        ax.set_title(ttl, pad=2, fontsize=9)  # pad ↓ keeps title close to table
+        ax.set_title(f"{title_line1}\n{title_line2}", pad=3, fontsize=12)
 
-    plt.tight_layout()
+    # ── 4. SAVE FIGURE ───────────────────────────────────────────────────────
+    plt.tight_layout(rect=[0, 0, 1, 0.95])  # leave room for suptitle
     plt.savefig(outfile, dpi=300)
     print(f"[plot_result_tables] saved coloured tables → {outfile}")
 
