@@ -601,12 +601,8 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
     voice_data = {sid: defaultdict(list) for sid in ("one", "two")}
     voice_correct = {sid: defaultdict(list) for sid in ("one", "two")}
 
-    print(f"\n=== DEBUG {title} ===")
-    print(f"Processing {len(file_paths)} files...")
-
     for fp, p, pr, lab in zip(file_paths, preds, probs, labels):
         fname = os.path.basename(fp)
-        print(f"Processing: {fname}")
 
         conf = pr if p == 1 else (1.0 - pr)  # confidence of predicted class
         is_correct = int(p == lab)
@@ -617,7 +613,6 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
             parts = fname.replace("voice_", "").replace(".mp3", "").split("_")
             if len(parts) >= 2:
                 sid, method = parts[0], parts[1]
-                print(f"  → Voice sample: sid='{sid}', method='{method}'")
                 if sid in ("one", "two"):
                     voice_data[sid][method].append(conf)
                     voice_correct[sid][method].append(is_correct)
@@ -627,31 +622,9 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
         parts = fname.split("_")
         if len(parts) >= 2:
             sid, method = parts[0], parts[1]
-            print(f"  → POH format: sid='{sid}', method='{method}'")
-
             if sid in _SPK:
-                print(f"    ✓ POH politician: {sid}")
                 data[sid][method].append(conf)
                 correct[sid][method].append(is_correct)
-            else:
-                print(f"    ? Unknown speaker: {sid}")
-        else:
-            print(f"  WARNING: Unexpected filename format: {fname}")
-
-    # Print summary of what was found
-    print(f"\nPOH data found:")
-    for sid in _SPK:
-        if data[sid]:
-            print(f"  {sid}: {dict(data[sid])}")
-        else:
-            print(f"  {sid}: No data")
-
-    print(f"\nVoice data found:")
-    for sid in ("one", "two"):
-        if voice_data[sid]:
-            print(f"  {sid}: {dict(voice_data[sid])}")
-        else:
-            print(f"  {sid}: No data")
 
     # Aggregate POH data: mean confidence + "all correct?"
     poh_results = {
@@ -672,9 +645,6 @@ def _build_block(title, threshold_type, eer, thr, file_paths, preds, probs, labe
         for sid, methods in voice_data.items()
         if methods
     }
-
-    print(f"\nFinal POH results: {poh_results}")
-    print(f"Final voice results: {voice_results}")
 
     block = {
         "title": title,
@@ -892,7 +862,7 @@ def main():
     # ============ CONFIGURATION ============
     # Threshold settings - MODIFY THESE AS NEEDED:
 
-    threshold_type = "eer"  # Options: "eer" or "fixed"
+    threshold_type = "fixed"  # Options: "eer" or "fixed"
     fixed_threshold = 0.5  # only Used when threshold_type="fixed"
 
     # =======================================
@@ -900,9 +870,11 @@ def main():
     # Paths
     mp3_dir = "../samples"  # Directory containing MP3 files
     weights_dir = "./models/weights"  # Directory containing model weights
-    results_file = "results_eer.txt"  # Output results file
-    poh_table_file = "poh_tables_eer.png"
-    voice_table_file = "voice_tables_eer.png"
+
+    # change these every run
+    results_file = "results_fixed.txt"  # Output results file
+    poh_table_file = "poh_tables_fixed.png"
+    voice_table_file = "voice_tables_fixed.png"
 
     if not os.path.exists(mp3_dir):
         print(f"MP3 directory {mp3_dir} not found!")
