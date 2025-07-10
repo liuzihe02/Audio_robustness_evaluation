@@ -15,7 +15,7 @@ import torch.nn.functional as F
 # Import existing modules
 from main_fm import run_validation as run_validation_fm
 from main_tm import run_validation as run_validation_tm
-from models import Hubert, Wav2Vec2BERT
+from models import Hubert, Wav2Vec2BERT, Wav2Vec2
 from utils import get_model, compute_eer
 from collections import OrderedDict
 
@@ -258,11 +258,16 @@ def evaluate_foundation_models(mp3_dir, weights_dir, results_file):
 
     # Models to evaluate
     models_config = {
-        "hubert": {
-            "model_name": "facebook/hubert-large-ls960-ft",
-            "weight_file": "hubert_large_wavefake.pth",
-            "sampling_rate": 16000,
-        },
+        # "hubert": {
+        #     "model_name": "facebook/hubert-large-ls960-ft",
+        #     "weight_file": "hubert_large_wavefake.pth",
+        #     "sampling_rate": 16000,
+        # },
+        # "wav2vec2": {  # Changed from "hubert"
+        #     "model_name": "facebook/wav2vec2-large-960h",  # Matches the checkpoint architecture
+        #     "weight_file": "hubert_large_wavefake.pth",  # Your existing checkpoint
+        #     "sampling_rate": 16000,
+        # },
         "wave2vec2bert": {
             "model_name": "facebook/w2v-bert-2.0",
             "weight_file": "wave2vec2bert_wavefake.pth",
@@ -286,6 +291,8 @@ def evaluate_foundation_models(mp3_dir, weights_dir, results_file):
         # Initialize model
         if model_name == "hubert":
             model = Hubert(config["model_name"])
+        elif model_name == "wav2vec2":  # THIS WAS MISSING
+            model = Wav2Vec2(config["model_name"])
         elif model_name == "wave2vec2bert":
             model = Wav2Vec2BERT(config["model_name"])
 

@@ -2,3 +2,126 @@ Audio Deepfake Detection Evaluation Results
 ============================================================
 MP3 files directory: ../samples
 Model weights directory: ./models/weights
+
+============================================================
+MODEL: WAV2VEC2
+============================================================
+Overall Metrics:
+  Accuracy: 0.5000
+  AUROC: 0.3674
+  EER: 0.5000
+
+Individual File Results:
+Filename	True_Label	Predicted	Confidence	Correct
+--------------------------------------------------------------------------------
+voice_two_cloned.mp3	0	1	0.8979	✗
+lw_oaip.mp3	0	1	0.8979	✗
+gky_ov.mp3	0	0	0.8979	✓
+lw_ov.mp3	0	0	0.8979	✓
+gky_cq.mp3	0	1	0.8979	✗
+jt_ov.mp3	0	1	0.8979	✗
+voice_one_original.mp3	1	1	0.8979	✓
+lw_cq.mp3	0	1	0.8979	✗
+jt_cq.mp3	0	1	0.8979	✗
+jt_oaii.mp3	0	1	0.8979	✗
+lhl_oaip.mp3	0	1	0.8979	✗
+gky_el.mp3	0	0	0.8979	✓
+lhl_original.mp3	1	1	0.8979	✓
+lhl_cq.mp3	0	1	0.8979	✗
+jt_original.mp3	1	0	0.8979	✗
+lw_oaii.mp3	0	0	0.8979	✓
+voice_two_original.mp3	1	0	0.8979	✗
+voice_one_cloned.mp3	0	0	0.8979	✓
+gky_original.mp3	1	1	0.8979	✓
+gky_oaip.mp3	0	0	0.8979	✓
+lhl_el.mp3	0	0	0.8979	✓
+jt_oaip.mp3	0	0	0.8979	✓
+lhl_oaii.mp3	0	1	0.8979	✗
+lw_el.mp3	0	0	0.8979	✓
+lw_original.mp3	1	0	0.8979	✗
+jt_el.mp3	0	0	0.8979	✓
+lhl_ov.mp3	0	1	0.8979	✗
+gky_oaii.mp3	0	0	0.8979	✓
+
+
+============================================================
+MODEL: WAVE2VEC2BERT
+============================================================
+Overall Metrics:
+  Accuracy: 0.7143
+  AUROC: 0.7424
+  EER: 0.3030
+
+Individual File Results:
+Filename	True_Label	Predicted	Confidence	Correct
+--------------------------------------------------------------------------------
+voice_two_cloned.mp3	0	1	0.9965	✗
+lw_oaip.mp3	0	0	0.0035	✓
+gky_ov.mp3	0	0	0.0032	✓
+lw_ov.mp3	0	0	0.0032	✓
+gky_cq.mp3	0	0	0.0032	✓
+jt_ov.mp3	0	0	0.0031	✓
+voice_one_original.mp3	1	1	0.9622	✓
+lw_cq.mp3	0	0	0.0031	✓
+jt_cq.mp3	0	0	0.0032	✓
+jt_oaii.mp3	0	0	0.0179	✓
+lhl_oaip.mp3	0	0	0.0078	✓
+gky_el.mp3	0	1	0.9816	✗
+lhl_original.mp3	1	0	0.8655	✗
+lhl_cq.mp3	0	0	0.0038	✓
+jt_original.mp3	1	1	0.9782	✓
+lw_oaii.mp3	0	0	0.0031	✓
+voice_two_original.mp3	1	1	0.9918	✓
+voice_one_cloned.mp3	0	1	0.9935	✗
+gky_original.mp3	1	1	0.9454	✓
+gky_oaip.mp3	0	0	0.0077	✓
+lhl_el.mp3	0	1	0.9952	✗
+jt_oaip.mp3	0	0	0.0106	✓
+lhl_oaii.mp3	0	0	0.0032	✓
+lw_el.mp3	0	1	0.9958	✗
+lw_original.mp3	1	0	0.7858	✗
+jt_el.mp3	0	1	0.9860	✗
+lhl_ov.mp3	0	0	0.0032	✓
+gky_oaii.mp3	0	0	0.0031	✓
+
+
+============================================================
+MODEL: AASIST
+============================================================
+Overall Metrics:
+  Accuracy: 0.5357
+  AUROC: 0.5682
+  EER: 0.4773
+
+Individual File Results:
+Filename	True_Label	Predicted	Confidence	Correct
+--------------------------------------------------------------------------------
+voice_two_cloned.mp3	0	1	1.0000	✗
+lw_oaip.mp3	0	0	0.9993	✓
+gky_ov.mp3	0	0	0.9472	✓
+lw_ov.mp3	0	0	0.9761	✓
+gky_cq.mp3	0	1	1.0000	✗
+jt_ov.mp3	0	1	0.9999	✗
+voice_one_original.mp3	1	1	1.0000	✓
+lw_cq.mp3	0	1	1.0000	✗
+jt_cq.mp3	0	1	1.0000	✗
+jt_oaii.mp3	0	0	0.0208	✓
+lhl_oaip.mp3	0	0	0.9994	✓
+gky_el.mp3	0	1	1.0000	✗
+lhl_original.mp3	1	1	1.0000	✓
+lhl_cq.mp3	0	0	0.9997	✓
+jt_original.mp3	1	0	0.9998	✗
+lw_oaii.mp3	0	0	0.0001	✓
+voice_two_original.mp3	1	1	1.0000	✓
+voice_one_cloned.mp3	0	1	1.0000	✗
+gky_original.mp3	1	0	0.9994	✗
+gky_oaip.mp3	0	0	0.5958	✓
+lhl_el.mp3	0	1	1.0000	✗
+jt_oaip.mp3	0	0	0.9578	✓
+lhl_oaii.mp3	0	0	0.4077	✓
+lw_el.mp3	0	1	1.0000	✗
+lw_original.mp3	1	0	0.0072	✗
+jt_el.mp3	0	1	1.0000	✗
+lhl_ov.mp3	0	0	0.9762	✓
+gky_oaii.mp3	0	0	0.0143	✓
+
