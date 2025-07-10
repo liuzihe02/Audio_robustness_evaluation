@@ -158,14 +158,37 @@ def run_validation_fm_with_details(model, feature_extractor, data_loader, sr):
 
             outputs_list.extend(
                 batch_probs[:, 1].tolist()
-            )  # Confidence for class 1 (genuine)
+            )  # probability for class 1 (genuine)
             labels_list.extend(batch_label)
             file_paths_list.extend(names)
 
     # Calculate metrics
     auroc = roc_auc_score(labels_list, outputs_list)
     eer = compute_eer(np.array(labels_list), np.array(outputs_list))
+
+    # ===== ADD THESE DEBUG LINES =====
+    print(f"\n=== DEBUG FM EER ===")
+    print(f"EER: {eer[0]:.4f}, Threshold: {eer[1]:.4f}")
+    print(f"Prob range: {min(outputs_list):.4f} to {max(outputs_list):.4f}")
+
     preds = (np.array(outputs_list) > eer[1]).astype(int)
+
+    # Check for mismatches
+    mismatches = []
+    for i, (prob, pred) in enumerate(zip(outputs_list, preds)):
+        expected = 1 if prob > eer[1] else 0
+        if pred != expected:
+            filename = os.path.basename(file_paths_list[i])
+            mismatches.append((filename, prob, pred, expected))
+
+    if mismatches:
+        print(f"FOUND {len(mismatches)} PREDICTION MISMATCHES:")
+        for filename, prob, pred, expected in mismatches[:3]:
+            print(f"  {filename}: prob={prob:.4f}, pred={pred}, expected={expected}")
+    else:
+        print("No prediction mismatches found")
+    # ================================
+
     acc = np.mean(np.array(labels_list) == np.array(preds))
 
     return acc, auroc, eer, outputs_list, labels_list, file_paths_list, preds
@@ -205,13 +228,31 @@ def run_validation_tm_with_details(config, data_loader, model, device):
 
             outputs_list.extend(
                 batch_prob[:, 1].tolist()
-            )  # Confidence for class 1 (genuine)
+            )  # probability for class 1 (genuine)
             labels_list.extend(batch_label)
             file_paths_list.extend(names)
 
     # Calculate metrics
     auroc = roc_auc_score(labels_list, outputs_list)
     eer = compute_eer(np.array(labels_list), np.array(outputs_list))
+
+    # ===== ADD THESE DEBUG LINES =====
+    print(f"\n=== DEBUG TM EER ===")
+    print(f"Model: {config['model_config']['architecture']}")
+    print(f"EER: {eer[0]:.4f}, Threshold: {eer[1]:.4f}")
+    print(f"Prob range: {min(outputs_list):.4f} to {max(outputs_list):.4f}")
+
+    preds = (np.array(outputs_list) > eer[1]).astype(int)
+
+    # Manual verification
+    manual_preds = [1 if prob > eer[1] else 0 for prob in outputs_list]
+    matches = sum(1 for i in range(len(preds)) if preds[i] == manual_preds[i])
+    print(f"Manual prediction matches: {matches}/{len(preds)}")
+
+    if matches != len(preds):
+        print("ERROR: Prediction calculation mismatch detected!")
+    # ================================
+
     preds = (np.array(outputs_list) > eer[1]).astype(int)
     acc = np.mean(np.array(labels_list) == np.array(preds))
 
@@ -240,15 +281,21 @@ def save_results_to_file(
         f.write(f"  EER: {eer[0]:.4f}\n\n")
 
         f.write("Individual File Results:\n")
-        f.write("Filename\tTrue_Label\tPredicted\tConfidence\tCorrect\n")
+        f.write("Filename\tTrue_Label\tPredicted\tProb_Genuine\tConfidence\tCorrect\n")
         f.write("-" * 80 + "\n")
 
-        for i, (file_path, true_label, pred, confidence) in enumerate(
+        for i, (file_path, true_label, pred, prob_genuine) in enumerate(
             zip(file_paths_list, labels_list, preds, outputs_list)
         ):
             filename = os.path.basename(file_path)
-            correct = "✓" if true_label == pred else "✗"
-            f.write(f"{filename}\t{true_label}\t{pred}\t{confidence:.4f}\t{correct}\n")
+            correct = "yes" if true_label == pred else "no"
+
+            # Calculate confidence: probability of the predicted class
+            confidence = prob_genuine if pred == 1 else (1.0 - prob_genuine)
+
+            f.write(
+                f"{filename}\t{true_label}\t{pred}\t{prob_genuine:.4f}\t{confidence:.4f}\t{correct}\n"
+            )
         f.write("\n")
 
 
