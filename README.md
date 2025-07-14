@@ -1,3 +1,26 @@
+# Benchmarking Audio Deepfakes
+
+This is a clone of the audio robustness evaluation [repo](https://github.com/Jessegator/Audio_robustness_evaluation). The research paper is available [here](https://arxiv.org/abs/2503.17577). I cloned this repo to test the performance of various audio detection tools on some personal samples.
+
+`vc_eval` contains the main scripts, which will save a `txt` file with all the results to a `results` folder. Graphs of the performance on each data sample are also generated. Change the `threshold_type` to either `fixed` for a fixed threshold during classification, or use `eer` for a variable threshold computed using the EER algorithim.
+
+## Model Weights
+
+Unfortunately, the repo developers did not include the model weights. As such, I had to manually source for the model weights. Here are the relevant links
+
+- [hubert and wave2vec2bert weights](https://huggingface.co/TrustSafeAI/AudioDeepfakeDetectors/tree/main)
+  - Note that the hubert weights do not work
+- [ASSIST and RawNet2 weights](https://github.com/asvspoof-challenge/asvspoof5)
+
+## Useful Repos
+
+Below are useful github repos for voice cloning detection that will be updated regularly:
+
+- [Awesome audio deepfake detection](https://github.com/john852517791/awesome-fake-audio-detection)
+- [Audio Deepfake detection](https://github.com/media-sec-lab/Audio-Deepfake-Detection)
+
+---
+
 # Audio_robustness_evaluation
 
 ## Enviroment

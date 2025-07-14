@@ -872,9 +872,9 @@ def main():
     weights_dir = "./models/weights"  # Directory containing model weights
 
     # change these every run
-    results_file = "results_fixed.txt"  # Output results file
-    poh_table_file = "poh_tables_fixed.png"
-    voice_table_file = "voice_tables_fixed.png"
+    results_file = "results/results_fixed.txt"  # Output results file
+    poh_table_file = "results/poh_tables_fixed.png"
+    voice_table_file = "results/voice_tables_fixed.png"
 
     if not os.path.exists(mp3_dir):
         print(f"MP3 directory {mp3_dir} not found!")
